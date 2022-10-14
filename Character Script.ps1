@@ -323,16 +323,16 @@ Do {
                         If ( $Search.line -like "*EQD.Wiki is*" ) {
                             Write-host "Opening P1999 wiki.."
                             Start-Process https://wiki.project1999.com/ }
-                        Elseif ( $Search.line -like "*EQD.Wiki:Zone *" ) {
+                        Elseif ( $Search.line -like "*EQD.Wiki-Zone *" ) {
                             Write-host "Opening P1999 wiki page for"$NChar[$Zon]".."
                             $URL = ($NChar[$Zon].replace( " ", "_" ))
                             Start-Process "https://wiki.project1999.com/$URL" }
-                        Elseif ( $Search.line -like "*EQD.Wiki:Class *" ) {
+                        Elseif ( $Search.line -like "*EQD.Wiki-Class *" ) {
                             Write-host "Opening P1999 wiki page for"$NChar[$Cla]".."
                             $URL = ($NChar[$Cla].replace( " ", "_" ))
                             Start-Process "https://wiki.project1999.com/$URL" }
-                        Elseif ( $Search.line -like "*EQD.Wiki:*" ) {
-                            $Que = ($Search.Line.LastIndexOf(':') +1); $ery = ($Search.Line.LastIndexOf(' is not') - $Que)
+                        Elseif ( $Search.line -like "*EQD.Wiki-*" ) {
+                            $Que = ($Search.Line.LastIndexOf('-') +1); $ery = ($Search.Line.LastIndexOf(' is not') - $Que)
                             $Query = $Search.Line.Substring( $Que, $ery )
                             Write-host "Opening P1999 wiki page for $Query.."
                             Start-Process "https://wiki.project1999.com/index.php?title=Special%253ASearch&search=$Query&go=Go" }
