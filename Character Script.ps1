@@ -37,7 +37,7 @@ Do {
         $NChar = @("Soandso", "Orange", "Bunny Girl", "Senpai", "<Level Up>", "The IronGuard Confine", "1", 0, 0, 0, 0, 0)
         $Nam = 0; $Ser = 1; $Rac = 2; $Cla = 3; $Gui = 4; $Zon = 5; $Lev = 6; $Dea = 7; $Clo = 8; $Kil = 9; $Cra = 10; $Fai = 11
         $CharCount = (($Char.Count) - 1)
-        #===Cash Tracking===
+        #===Cash Variables===
         $CoinTrack = "Total Coin", "Looted Coin", "Vendor Coin", "Quest Coin", "Traded Coin"
         $Coin = @(0, 0, 0, 0, 0)
         $NCoin = @(0, 0, 0, 0, 0)
