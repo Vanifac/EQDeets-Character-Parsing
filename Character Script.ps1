@@ -3,7 +3,13 @@
 Remove-Variable * -ErrorAction SilentlyContinue
 $PSDefaultParameterValues = @{ '*:Encoding' = 'utf8' }
 #=========Variables (Change these)=========
-$EQLogDir = "E:\Games\P99\Logs"
+$EQDir = Split-Path -Path (Get-Process -Name eqgame -ErrorVariable EQError).path
+if ($EQError -ne 0) {
+    throw "Everquest is not running.  Please start the game and try again."
+} else {
+    Write-Host "Everquest is not running.  Please start the game and try again."
+    }
+$EQLogDir = "$EQDir\Logs"
 $CheckDelay = 5 #Seconds
 #$LogSplitThreshhold = 10
 
