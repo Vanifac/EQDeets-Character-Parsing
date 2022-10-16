@@ -3,10 +3,22 @@
 Remove-Variable * -ErrorAction SilentlyContinue
 $PSDefaultParameterValues = @{ '*:Encoding' = 'utf8' }
 #=========Variables (Change these)=========
-$EQDir = Split-Path -Path (Get-Process -Name eqgame -ErrorVariable EQError).path
-if ($EQError -ne 0) {
-    throw "Everquest is not running.  Please start the game and try again."
+if (-Not (Test-Path -Path $env:LOCALAPPDATA\eqdeets)) {
+    new-item -Path $env:LOCALAPPDATA\eqdeets -itemtype directory
+    $NOTDir = 1
+}
+if (-Not (Test-Path -Path $env:LOCALAPPDATA\eqdeets\eqpath.txt)) {
+    new-item -Path $env:LOCALAPPDATA\eqdeets\eqpath.txt
+    $NotFile = 1
+}
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+if ($NotDir -eq 1 -or $NotFile -eq 1) {
+    if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $EQDirFile = $dialog.SelectedPath
+        $EQdirFile | Set-Content $env:LOCALAPPDATA\eqdeets\eqpath.txt
     }
+}
+$EQDir = get-content $env:LOCALAPPDATA\eqdeets\eqpath.txt
 $EQLogDir = "$EQDir\Logs"
 $CheckDelay = 5 #Seconds
 #$LogSplitThreshhold = 10
@@ -32,6 +44,7 @@ Foreach ($Total in $TotalLogs) {
 
 #=========Script=========
 Clear-Host
+write-host "using $EQLogDir"
 Write-Host "====================================="
 Do {
     Do {
