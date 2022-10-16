@@ -54,7 +54,7 @@ Do {
         $NChar = @("Soandso", "Orange", "Bunny Girl", "Senpai", "<Level Up>", "The IronGuard Confine", "1", 0, 0, 0, 0, 0)
         $Nam = 0; $Ser = 1; $Rac = 2; $Cla = 3; $Gui = 4; $Zon = 5; $Lev = 6; $Dea = 7; $Clo = 8; $Kil = 9; $Cra = 10; $Fai = 11
         $CharCount = (($Char.Count) - 1)
-        #===Cash Tracking===
+        #===Cash Variables===
         $CoinTrack = "Total Coin", "Looted Coin", "Vendor Coin", "Quest Coin", "Traded Coin"
         $Coin = @(0, 0, 0, 0, 0)
         $NCoin = @(0, 0, 0, 0, 0)
@@ -89,8 +89,8 @@ Do {
             Do {
                 $NewSave = Select-String $ActiveLogP -Pattern $WhoCheck -Simplematch | Select-Object -Last 1 | select-object -ExpandProperty Line
                 if ($null -eq $NewSave) {
-                    Write-Host "Waiting for a /Who message to populate character info for"$Char[0]", ensure logging is enabled in game (/log).." -ForegroundColor Red 
-                    Start-Sleep -Seconds 5 
+                    Write-Host "Waiting for a /Who message to populate character info for"$Char[0]", ensure logging is enabled in game (/log).." -ForegroundColor Red
+                    Start-Sleep -Seconds 5
                 }
             }
             While ($Null -eq $NewSave)
@@ -98,11 +98,11 @@ Do {
             $Race1 = $NewSave.LastIndexOf('(') + 1; $Ace = ($NewSave.LastIndexOf(')') - $Race1); $Char[$Rac] = $NewSave.Substring($Race1, $Ace).Trim()
             $Clas = $NewSave.LastIndexOf('[') + 3; $Lass = ($NewSave.LastIndexOf(']') - $Clas); $Char[$Cla] = $NewSave.Substring($Clas, $Lass).Trim()
             $Char[$Lev] = $NewSave.Substring($NewSave.LastIndexOf('[') + 1, 2).Trim()
-            $WhoZone = Select-String $ActiveLogP -Pattern '(There are .* players in )' | Select-Object -Last 1 
+            $WhoZone = Select-String $ActiveLogP -Pattern '(There are .* players in )' | Select-Object -Last 1
             if ($null -eq $WhoZone) { $WhoZone = Select-String $ActiveLogP -Pattern 'There is 1 player in ' | Select-Object -Last 1 }
             $Char[$Zon] = ($WhoZone.Line.Substring($WhoZone.Line.LastIndexOf(" in ") + 4)).TrimEnd('.')
-            if ($NewSave -like "*<*") { 
-                $Guil = $NewSave.LastIndexOf('<') + 1; $Uild = ($NewSave.LastIndexOf('>') - $Guil); $Char[$Gui] = $NewSave.Substring($Guil, $Uild).Trim() 
+            if ($NewSave -like "*<*") {
+                $Guil = $NewSave.LastIndexOf('<') + 1; $Uild = ($NewSave.LastIndexOf('>') - $Guil); $Char[$Gui] = $NewSave.Substring($Guil, $Uild).Trim()
             }
             Else { $Char[$Gui] = "Guildless" }
 
@@ -110,11 +110,11 @@ Do {
             $Loaded = [String]$Char[0..5]
             Add-Content $SaveTxt $Loaded
         }
-    
+
         #===Post-Load Variables===
         $Loaded | Out-File $ActiveTxt -Force
         $c = 0; $Loaded -Split " - " | Foreach-Object { $Char[$c] = $_; $c++ }
-        
+
         #===Build File Structure===
         $NameDir = "$CharInfoDir\$NameSer"
         $DataDir = "$NameDir\Data"
@@ -125,7 +125,7 @@ Do {
                 New-Item -ItemType Directory -Path $Dir | Out-Null
                 Write-Host "Creating $Dir.."
                 Start-Sleep -Seconds 1
-                if ( $Dir -eq "$DataDir" ) { 
+                if ( $Dir -eq "$DataDir" ) {
                     Write-Host "Creating StatLine.csv.."
                     $StatLine | Out-File "$DataDir\StatLine.csv"
                     Start-Sleep -Milliseconds 125
@@ -167,7 +167,7 @@ Do {
         $Statline = Get-Content "$DataDir\Statline.csv"
         if ( $Stats.count -ne $Statline.count ) {
             $MissingLines = $Stats.count - $Statline.count
-            for ($SL = 0; $SL -lt $MissingLines; $SL++) { 
+            for ($SL = 0; $SL -lt $MissingLines; $SL++) {
                 $Statline += 1
             }
             $Statline | Out-File "$DataDir\Statline.csv" -Force
@@ -177,7 +177,7 @@ Do {
         $Coinline = Get-Content "$DataDir\Coinline.csv"
         if ( $Coin.count -ne $Coinline.count ) {
             $MissingCoins = $Coin.count - $Coinline.count
-            for ($SL = 0; $SL -lt $MissingCoins; $SL++) { 
+            for ($SL = 0; $SL -lt $MissingCoins; $SL++) {
                 $Coinline += 1
             }
             $Coinline | Out-File "$DataDir\Statline.csv" -Force
@@ -214,7 +214,7 @@ Do {
             Copy-Item "$NameDir\*. $Stat*" $ActiveDir\ -Force
         }
         Copy-Item "$NameDir\Character Info.csv" $ActiveDir\
-        
+
         #===Loop Parsing===
         Write-Host "Parsing.."
         Do {
@@ -228,11 +228,11 @@ Do {
                 }
                 Else { $NChar[$Gui] = "Guildless" }
             }
-            
+
             #---Zoning Parse---
             $Zoning = Select-String $ActiveLogP -Pattern 'You have entered ' -SimpleMatch | Select-Object -Last 1
             $NChar[$Zon] = ($Zoning.Line.Substring($Zoning.Line.LastIndexOf('entered') + 8)).TrimEnd('.')
-            
+
             #---Misc Parsing---
             #--(De)Ding Parse--
             $Dings = Select-String $ActiveLogP -Pattern "You have gained a level! Welcome to level " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Lev]) }
@@ -271,7 +271,7 @@ Do {
             #    $Shotta = Select-String $ActiveLogP -Pattern "You have been knocked unconscious!"  -SimpleMatch | Select-Object -Last 1
             #    Write-Host "Close call!"$Shotta" must have been reeeaaal tired of your rapping.." -ForegroundColor Red
             #    $NChar[$Dea] = [String]([Int]$NChar[$Dea] + [Int]$Dying.count)
-            #}  
+            #}
 
             #--Final Blows--
             $Kills = Select-String $ActiveLogP -Pattern '(You have slain a .*!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
@@ -286,7 +286,7 @@ Do {
                 [Int]$NChar[$Cra] += $Crafts.Count
                 $NStatLine[$Cra] = ($Crafts.LineNumber | Select-Object -Last 1)
             }
- 
+
             #--Failed Crafts--
             $Fails = Select-String $ActiveLogP -Pattern '(You lacked the skills to fashion the items together)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Fai]) }
             if ( $null -ne $Fails ) {
@@ -317,7 +317,7 @@ Do {
                     $CoinLine[$VCo] = [Int]$Sale.LineNumber
                 }
             }
-            
+
             #---Quest Coin---
             $QuestCoin = Select-String $ActiveLogP -Pattern '(You receive .* pieces.)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$QCo]) }
             if ( $null -ne $QuestCoin ) {
@@ -378,7 +378,7 @@ Do {
                     $OldCSV = Get-Content "$NameDir\Character Info.csv" | Select-Object -Last 1
                     (Get-Content -Path "$NameDir\Character Info.csv").Replace($OldCSV, $NCharCSV) | Set-Content -Path "$NameDir\Character Info.csv"
                     (Get-Content -Path "$ActiveDir\Character Info.csv").Replace($OldCSV, $NCharCSV) | Set-Content -Path "$ActiveDir\Character Info.csv"
-                    
+
                     #---Reloading Baseline Variables---
                     $Loaded = (Select-String $SaveTxt -Pattern $NameSer -Simplematch).line
                     $c = 0; $NChar | Foreach-Object { $Char[$c] = $_; $c++ }
@@ -387,7 +387,7 @@ Do {
 
                 #---Updating Coin Count---
                 if ( [String]$NCoin -ne "0 - 0 - 0 - 0 - 0" ) {
-                    
+
                     $c = 0; $NCoin | Foreach-Object { [Int]$Coin[$c] += $_; $c++ }
                     $c = 0; $NCoin | Foreach-Object { [Int]$Coin[$TCo] += $_; $c++ }
                     $Coin | Out-file "$DataDir\Copper.csv"
@@ -417,13 +417,13 @@ Do {
                         $c++
                     }
                     $CoinCSV | Out-file "$NameDir\Cash.csv" -Force
-                   
+
                     $Coinline | Out-file "$DataDir\Coinline.csv" -Force
                     #---Update Baseline Variables---
 
                     $NCoin = @(0, 0, 0, 0, 0)
                 }
-                
+
                 #---Updating line tracking---
                 if ( [String]$NStatline -ne [String]$Statline ){
                     $c = 0; $NStatline | Foreach-Object { $StatLine[$c] = $_; $c++ }
@@ -437,7 +437,7 @@ Do {
             }
 
             #---Pause---
-            for ($a = 0; $a -lt $checkdelay; $a++) { 
+            for ($a = 0; $a -lt $checkdelay; $a++) {
                 Write-Host ("." * ($a / 3))`r -NoNewline
                 Start-Sleep -Seconds 1
             }
@@ -445,7 +445,7 @@ Do {
 
             #---End Checks---
             $EQStatus = Get-Process -Name eqgame -ErrorAction SilentlyContinue
-            if ($null -eq $EQStatus) { 
+            if ($null -eq $EQStatus) {
                 Write-host "Everquest has closed. Closing Script." -ForegroundColor Red
                 Return
             }
