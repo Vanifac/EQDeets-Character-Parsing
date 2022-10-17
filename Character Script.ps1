@@ -1,30 +1,34 @@
 ﻿#EQDeets - Character Parsing - v1.0.3 - 10/13/2022
-#Written by Vanifac - Discord Vanifac#0123
+#Written by Vanifac - Discord: Vanifac#0123
 Remove-Variable * -ErrorAction SilentlyContinue
 $PSDefaultParameterValues = @{ '*:Encoding' = 'utf8' }
 #=========Variables (Change these)=========
 $EQLogDir = "E:\Games\P99\Logs"
-$CheckDelay = 5 #Seconds
+$CheckDelay = 2 #Seconds
 #$LogSplitThreshhold = 10
 
 #=========Variables (Do Not Change)=========
 $CharInfoDir = "$EQLogDir\Character Info"
+$CharDataDir = "$CharInfoDir\0. Data"
 $ActiveDir = "$CharInfoDir\Active Character"
 $ActiveTxt = "$ActiveDir\0. Active Character.txt"
 $SaveTxt = "$CharInfoDir\1. Character List.txt"
-$OFS = " - "
 $TotalLogs = "Total Deaths"
 $EventLogs = "Death", "Level"
+$OFS = " - "
+
+$TimerTest = Test-Path "$CharDataDir\HourglassPortable.exe"
 
 #=========Creating Text Files=========
 New-Item -ItemType Directory -Path $CharInfoDir -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType Directory -Path $ActiveDir -ErrorAction 'silentlycontinue' | Out-Null
+New-Item -ItemType Directory -Path $CharDataDir -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType File -Path $ActiveTxt -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType File -Path $SaveTxt -ErrorAction 'silentlycontinue' | Out-Null
 
 Foreach ($Total in $TotalLogs) {
     $TotalTest = Test-Path "$CharInfoDir\$Total.txt"
-    if ( -not $TotalTest ){0 | Out-File "$CharInfoDir\$Total.txt"}}
+    if ( -not $TotalTest ){ 0 | Out-File "$CharInfoDir\$Total.txt" }}
 
 #=========Script=========
 Clear-Host
@@ -37,11 +41,13 @@ Do {
         $NChar = @("Soandso", "Orange", "Bunny Girl", "Senpai", "<Level Up>", "The IronGuard Confine", "1", 0, 0, 0, 0, 0)
         $Nam = 0; $Ser = 1; $Rac = 2; $Cla = 3; $Gui = 4; $Zon = 5; $Lev = 6; $Dea = 7; $Clo = 8; $Kil = 9; $Cra = 10; $Fai = 11
         $CharCount = (($Char.Count) - 1)
-        #===Cash Tracking===
+
+        #===Cash Variables===
         $CoinTrack = "Total Coin", "Looted Coin", "Vendor Coin", "Quest Coin", "Traded Coin"
         $Coin = @(0, 0, 0, 0, 0)
         $NCoin = @(0, 0, 0, 0, 0)
         $TCo = 0; $LCo = 1; $VCo = 2; $QCo = 3; $TrCo = 4
+
         #===Line Variables for tracking log lines===
         $StatLine = [int[]]::new($stats.count)
         $L = 0; Foreach ($Stat in $Stats) { $StatLine[$L] = 1; $L++ }
@@ -56,9 +62,12 @@ Do {
         Write-Host "Selecting Active Log.."; Start-Sleep -Milliseconds 500
         $ActiveLogP = Get-ChildItem $EQLogDir\eqlog_*1999*.txt | Sort-Object LastWriteTime | Select-Object -last 1
         $ActiveLogN = Get-Item $ActiveLogP | select-object -ExpandProperty Name
-        $Tr, ($Char[$Nam]), $Serv = "$ActiveLogN" -split '_'; ($Char[$Ser]) = ($Serv.Substring(5)).TrimEnd('.txt')
-        if ( $ActiveLogP -contains "project1999") { $Char[$Ser] = "Blue" }
-        #$FirstLine =  (Get-Content $ActiveLogP | Measure-Object).Count
+        $Tr, ($Char[$Nam]), $Serv = "$ActiveLogN" -split '_'
+
+        #--Select Server--
+        if ( "$ActiveLogN" -like "*project1999*") { $Char[$Ser] = "Blue" }
+        Elseif ( "$ActiveLogN" -like "*P1999PVP*" ) { $Char[$Ser] = "Red" }
+        Else { ($Char[$Ser]) = ($Serv.Substring(5)).TrimEnd('.txt') }
 
         #---Loading Saved Character---
         $NameSer = ($Char[$Nam, $Ser] -Join " - ")
@@ -201,24 +210,24 @@ Do {
         #===Loop Parsing===
         Write-Host "Parsing.."
         Do {
+            $LogCache = Get-Content $ActiveLogP
+
             #---/Who Parse---
-            $Who = Select-String $ActiveLogP -Pattern $WhoCheck -SimpleMatch | Select-Object -Last 1
+            $Who = $LogCache | Select-String -Pattern $WhoCheck -SimpleMatch | Select-Object -Last 1
             if ($null -ne $who) {
                 $Clas = $Who.Line.LastIndexOf('[') + 3; $Lass = ($Who.Line.LastIndexOf(']') - $Clas); $NChar[$Cla] = $Who.Line.Substring($Clas, $Lass).Trim()
-                #$NChar[$Lev] = $Who.Line.Substring($Who.Line.LastIndexOf('[') + 1, 2).Trim() - Ruins Ding parsing, shouldn't need it anyways.
                 if ( $Who.Line -Like "*<*>" ) {
                     $Guil = $Who.Line.LastIndexOf('<') + 1; $Uild = ($Who.Line.LastIndexOf('>') - $Guil); $NChar[$Gui] = $Who.Line.Substring($Guil, $Uild).Trim()
-                }
-                Else { $NChar[$Gui] = "Guildless" }
+                    } Else { $NChar[$Gui] = "Guildless" }    
             }
             
             #---Zoning Parse---
-            $Zoning = Select-String $ActiveLogP -Pattern 'You have entered ' -SimpleMatch | Select-Object -Last 1
+            $Zoning = $LogCache | Select-String -Pattern 'You have entered ' -SimpleMatch | Select-Object -Last 1
             $NChar[$Zon] = ($Zoning.Line.Substring($Zoning.Line.LastIndexOf('entered') + 8)).TrimEnd('.')
             
             #---Misc Parsing---
             #--(De)Ding Parse--
-            $Dings = Select-String $ActiveLogP -Pattern "You have gained a level! Welcome to level " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Lev]) }
+            $Dings = $LogCache | Select-String -Pattern "You have gained a level! Welcome to level " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Lev]) }
             if ( $null -ne $Dings) {
                 $Ding = $Dings | Select-Object -Last 1
                 $NChar[$Lev] = ($Ding.Line.Substring($Ding.Line.LastIndexOf(' level ') + 7, 2).TrimEnd('!'))
@@ -233,14 +242,14 @@ Do {
             }
 
             #--Deaths--
-            $Dying = Select-String $ActiveLogP -Pattern "You have been slain by " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Dea]) }
+            $Dying = $LogCache | Select-String -Pattern "You have been slain by " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Dea]) }
             if ( $null -ne $Dying ) {
                 [Int]$NChar[$Dea] += $Dying.count
                 $NStatLine[$Dea] = ($Dying.LineNumber | Select-Object -last 1)
                 If ( ([Int]($StatLine[$Dea])) -eq 1) {
                     Add-Content "$NameDir\DeathLog.txt" $Dying.line
                 }Else { Add-Content "$NameDir\DeathLog.txt" (($Dying.line) + " - " + $NChar[$Zon]) }
-                $Killedby = Select-String $ActiveLogP -Pattern "You have been slain by " -SimpleMatch | Select-Object -Last 1
+                $Killedby = $LogCache | Select-String -Pattern "You have been slain by " -SimpleMatch | Select-Object -Last 1
                 $Killer = $Killedby.Line.Substring($Killedby.Line.LastIndexOf(' by ') + 4 ).TrimEnd('!')
                 Write-Host "You have died!"$Killer" probably really enjoyed that.. weirdo." -ForegroundColor Red
                 #--Update Total deaths--
@@ -249,29 +258,29 @@ Do {
             }
 
             #--Close Calls--
-            #$CloseCall = Select-String $ActiveLogP -Pattern '(You have been knocked unconscious!)' -Context | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
+            #$CloseCall = $LogCache | Select-String -Pattern '(You have been knocked unconscious!)' -Context | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
             #if( $Closecall.count -gt $NChar[$Dea] ){
-            #    $Shotta = Select-String $ActiveLogP -Pattern "You have been knocked unconscious!"  -SimpleMatch | Select-Object -Last 1
+            #    $Shotta = $LogCache | Select-String -Pattern "You have been knocked unconscious!"  -SimpleMatch | Select-Object -Last 1
             #    Write-Host "Close call!"$Shotta" must have been reeeaaal tired of your rapping.." -ForegroundColor Red
             #    $NChar[$Dea] = [String]([Int]$NChar[$Dea] + [Int]$Dying.count)
             #}  
 
             #--Final Blows--
-            $Kills = Select-String $ActiveLogP -Pattern '(You have slain a .*!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
+            $Kills = $LogCache | Select-String -Pattern '(You have slain a .*!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
             if ( $null -ne $Kills ) {
                 [Int]$NChar[$Kil] += $Kills.Count
                 $NStatLine[$Kil] = ($Kills.LineNumber | Select-Object -Last 1)
             }
 
             #--Crafts--
-            $Crafts = Select-String $ActiveLogP -Pattern '(You have fashioned the items together to create something new!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Cra]) }
+            $Crafts = $LogCache | Select-String -Pattern '(You have fashioned the items together to create something new!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Cra]) }
             if ( $null -ne $Crafts ) {
                 [Int]$NChar[$Cra] += $Crafts.Count
                 $NStatLine[$Cra] = ($Crafts.LineNumber | Select-Object -Last 1)
             }
  
             #--Failed Crafts--
-            $Fails = Select-String $ActiveLogP -Pattern '(You lacked the skills to fashion the items together)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Fai]) }
+            $Fails = $LogCache | Select-String -Pattern '(You lacked the skills to fashion the items together)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Fai]) }
             if ( $null -ne $Fails ) {
                 [Int]$NChar[$Fai] += $Fails.Count
                 $NStatLine[$Fai] = ($Fails.LineNumber | Select-Object -Last 1)
@@ -279,7 +288,7 @@ Do {
 
             #---Coin---
             #--Looted Coin--
-            $LootedCoin = Select-String $ActiveLogP -Pattern '(You receive .* from the corpse)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$LCo]) }
+            $LootedCoin = $LogCache | Select-String -Pattern '(You receive .* from the corpse)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$LCo]) }
             if ( $null -ne $LootedCoin ) {
                 ForEach ( $Corpse in $LootedCoin) {
                     if ($Corpse.Line -like "*copper*") {$NCoin[$LCo] += [Int]($Corpse.Line.Substring($Corpse.Line.IndexOf("copper") - 3, 3).Trim())}
@@ -290,7 +299,7 @@ Do {
                 }
             }
             #---Vendored Coin---
-            $VendorCoin = Select-String $ActiveLogP -Pattern '(You receive .* from .* for the )' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$VCo]) }
+            $VendorCoin = $LogCache | Select-String -Pattern '(You receive .* from .* for the )' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$VCo]) }
             if ( $null -ne $VendorCoin ) {
                 ForEach ( $Sale in $VendorCoin) {
                     if ($Sale.Line -like "*copper*") {$NCoin[$VCo] += [Int]($Sale.Line.Substring($Sale.Line.IndexOf("copper") - 3, 3).Trim())}
@@ -302,7 +311,7 @@ Do {
             }
             
             #---Quest Coin---
-            $QuestCoin = Select-String $ActiveLogP -Pattern '(You receive .* pieces.)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$QCo]) }
+            $QuestCoin = $LogCache | Select-String -Pattern '(You receive .* pieces.)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$QCo]) }
             if ( $null -ne $QuestCoin ) {
                 ForEach ( $Quest in $QuestCoin) {
                     if ($Quest.Line -like "*copper*") {$NCoin[$QCo] += [Int]($Quest.Line.Substring($Quest.Line.IndexOf("copper") - 3, 3).Trim())}
@@ -317,22 +326,23 @@ Do {
             #$TradeCoin
 
             #---Tell Parsing---
-            $WikiSearch = Select-String $ActiveLogP -Pattern '(EQD.Wiki)' | Where-Object { $_.LineNumber -GT ([Int]$Statline[$Nam]) } | Select-Object -Last 3
+            #--Wiki--
+            $WikiSearch = $LogCache | Select-String -Pattern '(EQD.Wiki)' | Where-Object { $_.LineNumber -GT ([Int]$Statline[$Nam]) } | Select-Object -Last 3
                 if ( $null -ne $WikiSearch ) {
                     Foreach ( $Search in $WikiSearch ){
                         If ( $Search.line -like "*EQD.Wiki is*" ) {
                             Write-host "Opening P1999 wiki.."
                             Start-Process https://wiki.project1999.com/ }
-                        Elseif ( $Search.line -like "*EQD.Wiki:Zone *" ) {
+                        Elseif ( $Search.line -like "*EQD.Wiki-Zone *" ) {
                             Write-host "Opening P1999 wiki page for"$NChar[$Zon]".."
                             $URL = ($NChar[$Zon].replace( " ", "_" ))
                             Start-Process "https://wiki.project1999.com/$URL" }
-                        Elseif ( $Search.line -like "*EQD.Wiki:Class *" ) {
+                        Elseif ( $Search.line -like "*EQD.Wiki-Class *" ) {
                             Write-host "Opening P1999 wiki page for"$NChar[$Cla]".."
                             $URL = ($NChar[$Cla].replace( " ", "_" ))
                             Start-Process "https://wiki.project1999.com/$URL" }
-                        Elseif ( $Search.line -like "*EQD.Wiki:*" ) {
-                            $Que = ($Search.Line.LastIndexOf(':') +1); $ery = ($Search.Line.LastIndexOf(' is not') - $Que)
+                        Elseif ( $Search.line -like "*EQD.Wiki-*" ) {
+                            $Que = ($Search.Line.LastIndexOf('-') +1); $ery = ($Search.Line.LastIndexOf(' is not') - $Que)
                             $Query = $Search.Line.Substring( $Que, $ery )
                             Write-host "Opening P1999 wiki page for $Query.."
                             Start-Process "https://wiki.project1999.com/index.php?title=Special%253ASearch&search=$Query&go=Go" }
@@ -340,11 +350,56 @@ Do {
                     }
                 }
 
-  #             $Timer = Select-String $ActiveLogP -Pattern '(EQD.Timer:)' | Where-Object { $_.LineNumber -GT ([Int]$Statline[$Nam]) } | Select-Object -Last 3
-  #             if ( $null -ne $Timer ) {
-  #                 $Tim = ($Search.Line.LastIndexOf(':') +1); $Mer = ($Search.Line.LastIndexOf(' is not') - $Que); $Query = $Search.Line.Substring( $Tim, $Mer )
-  #                 Start-Process "$EQLogDir\HourglassPortable.exe" -ArgumentList -always-on-top on -close-when-expired on "6:40"
-  #             }
+                #--Timer--
+                if ( $TimerTest ) {
+                    $Timer = $LogCache | Select-String -Pattern '(EQD.Timer)' | Where-Object { $_.LineNumber -GT ([Int]$Statline[$Ser]) } | Select-Object -Last 3
+                    if ( $null -ne $Timer ) {
+                        Foreach ( $Tell in $Timer ) {
+                            if ( $Tell -like "*EQD.Timer-Zone*" ) {
+                                $ProcTime = Get-Date
+                                $Tr, $ZST = (Select-String "$CharDataDir\ZoneSpawnTimes.csv" -Pattern $NChar[$Zon]) -Split ","
+                                Write-Host "Starting"$NChar[$Zon]"spawn timer with $ZST.."
+                                Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on --close-when-expired on $ZST"
+                            } 
+                            Elseif ( $Tell -like "*EQD.Timer-[0-9\][0-9\]:[0-6\][0-9\]*" ) {
+                                $ProcTime = Get-Date
+                                $ReqTime = ($Tell.Line.Substring(1,20))
+                                #New-TimeSpan -Start -End Get-Date
+
+                                $Mins = ($Tell.Line.Substring(($Tell.Line.LastIndexOf(':') - 2), 2))
+                                
+                                $Secs = ($Tell.Line.Substring($Tell.Line.LastIndexOf(':') + 1, 2))
+                                
+                                $Dur = "$Mins`:$Secs"
+
+                                Write-Host "Starting a timer for $Dur.."
+                                Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on --close-when-expired on $Dur"
+                            } 
+                            Elseif ( $Tell -like "*EQD.Timer-[0-9\]:[0-6\][0-9\]*" ) {
+                                $ProcTime = Get-Date
+
+
+                                $Mins = ($Tell.Line.Substring(($Tell.Line.LastIndexOf(':') - 1), 1))
+                                
+                                $Secs = ($Tell.Line.Substring($Tell.Line.LastIndexOf(':') + 1, 2))
+                                
+                                $Dur = "$Mins`:$Secs"
+
+                                Write-Host "Starting a timer for $Dur.."
+                                Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on --close-when-expired on $Dur"
+                            } 
+                            Elseif ( $Tell -like "*EQD.Timer is*" ) {
+                                Write-Host "Opening timer app.."
+                                Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on --close-when-expired on"
+                                }
+                            Else { 
+                                Write-Host "Invalid timer request.. Opening timer app.."
+                                Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on --close-when-expired on"
+                            } 
+                        }
+                    $NStatLine[$Ser] = ($Timer.LineNumber | Select-Object -Last 1)
+                    }
+                }
 
             #===Saving===
             if (([String]$Char + " - " + "0 - 0 - 0 - 0 - 0" + " - " + [String]$Statline) -ne ([String]$NChar + " - " + [String]$NCoin + " - " + [String]$NStatline)) {
@@ -389,7 +444,7 @@ Do {
                         if ( $Length -ge 2) { $SP = ([String]$Source).Substring($Length - 2, 1) }Else { $SP = 0 }
                         if ( $Length -ge 3) { $GP = ([String]$Source).Substring($Length - 3, 1) }Else { $GP = 0 }
                         if ( $Length -ge 4) { $PP = ([String]$Source).Substring(0, $Length - 3) }Else { $PP = 0 }
-                        $CoinTXT += @( $CoinTrack[$c] + ": $PP`PP $GP`GP $SP`SP $CP`CP")
+                        $CoinTXT += @( $CoinTrack[$c] + ": $PP`$PP`pp $GP`gp $SP`sp $CP`cp")
                         $c++
                     }
                     $CoinTXT | Out-file "$NameDir\Cash.txt" -Force
@@ -401,8 +456,7 @@ Do {
                         if ( $Length -ge 2) { $SP = ([String]$Source).Substring($Length - 2, 1) }Else { $SP = 0 }
                         if ( $Length -ge 3) { $GP = ([String]$Source).Substring($Length - 3, 1) }Else { $GP = 0 }
                         if ( $Length -ge 4) { $PP = ([String]$Source).Substring(0, $Length - 3) }Else { $PP = 0 }
-                        #$CoinCSV += @( $CoinTrack[$c]+'":","$PP`PP","$GP`GP","$SP`SP","$CP`CP"')
-                        $CoinCSV += @( $CoinTrack[$c] + ":, $PP`PP,$GP`GP,$SP`SP,$CP`CP")
+                        $CoinCSV += @( $CoinTrack[$c] + ":, $PP`pp,$GP`gp,$SP`sp,$CP`cp")
                         $c++
                     }
                     $CoinCSV | Out-file "$NameDir\Cash.csv" -Force
