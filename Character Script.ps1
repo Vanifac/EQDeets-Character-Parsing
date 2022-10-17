@@ -1,15 +1,38 @@
-﻿#EQDeets - Character Parsing - v1.0.3 - 10/13/2022
-#Written by Vanifac - Discord: Vanifac#0123
+﻿﻿#EQDeets - Character Parsing - v1.0.4 - 10/17/2022
+#Written by Vanifac - Discord Vanifac#0123
+#Contributors - Immaridel
 Remove-Variable * -ErrorAction SilentlyContinue
 $PSDefaultParameterValues = @{ '*:Encoding' = 'utf8' }
 #=========Variables (Change these)=========
-$EQLogDir = "E:\Games\P99\Logs"
-$CheckDelay = 2 #Seconds
-#$LogSplitThreshhold = 10
+$CheckDelay = 5 #Seconds
+
+#=========Everquest installation location=========
+$EQDir = Get-Content $env:LOCALAPPDATA\EQDeets\eqpath.txt -ErrorAction 'silentlycontinue'
+$EQGameTest = Test-Path $EQDir\eqgame.exe
+if ( -Not $EQGameTest ) {
+    New-Item -ItemType Directory -Path $env:LOCALAPPDATA\EQDeets -ErrorAction 'silentlycontinue' | Out-Null
+    Add-Type -AssemblyName "System.Windows.Forms"
+    $Dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $Dialog.Description = "Select your Project 1999 Installation Folder"
+    $Dialog.rootfolder = "MyComputer"
+    $Window = New-Object -ComObject Wscript.shell
+    $Window.popup("Please select your Project 1999 Installation Folder")
+    While ( $null -eq $EQDirFile -or -Not $EQGameTest ) {
+        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $EQDirFile = $dialog.SelectedPath
+            $EQDirFile | Out-File $env:LOCALAPPDATA\EQDeets\eqpath.txt -Force
+        }
+        $EQDir = Get-Content $env:LOCALAPPDATA\EQDeets\eqpath.txt
+        $EQGameTest = Test-Path $EQDir\eqgame.exe
+        if ( -Not $EQGameTest ){
+            $Window.popup( "eqgame.exe was not found in $EQDir`nPlease verify and select your Project 1999 install folder..")
+        }
+    }
+}
 
 #=========Variables (Do Not Change)=========
+$EQLogDir = "$EQDir\Logs"
 $CharInfoDir = "$EQLogDir\Character Info"
-$CharDataDir = "$CharInfoDir\0. Data"
 $ActiveDir = "$CharInfoDir\Active Character"
 $ActiveTxt = "$ActiveDir\0. Active Character.txt"
 $SaveTxt = "$CharInfoDir\1. Character List.txt"
@@ -25,14 +48,13 @@ New-Item -ItemType Directory -Path $ActiveDir -ErrorAction 'silentlycontinue' | 
 New-Item -ItemType Directory -Path $CharDataDir -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType File -Path $ActiveTxt -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType File -Path $SaveTxt -ErrorAction 'silentlycontinue' | Out-Null
-
 Foreach ($Total in $TotalLogs) {
     $TotalTest = Test-Path "$CharInfoDir\$Total.txt"
     if ( -not $TotalTest ){ 0 | Out-File "$CharInfoDir\$Total.txt" }}
 
 #=========Script=========
 Clear-Host
-Write-Host "====================================="
+Write-Host "=====================================`nEverquest install found.."
 Do {
     Do {
         #===Stat Variables===
@@ -47,7 +69,7 @@ Do {
         $Coin = @(0, 0, 0, 0, 0)
         $NCoin = @(0, 0, 0, 0, 0)
         $TCo = 0; $LCo = 1; $VCo = 2; $QCo = 3; $TrCo = 4
-
+        
         #===Line Variables for tracking log lines===
         $StatLine = [int[]]::new($stats.count)
         $L = 0; Foreach ($Stat in $Stats) { $StatLine[$L] = 1; $L++ }
