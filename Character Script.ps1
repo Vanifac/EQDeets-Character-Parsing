@@ -1,55 +1,57 @@
-﻿#EQDeets - Character Parsing - v1.0.3 - 10/13/2022
+﻿#EQDeets - Character Parsing - v1.0.4 - 10/17/2022
 #Written by Vanifac - Discord Vanifac#0123
+#Contributors - Immaridel
 Remove-Variable * -ErrorAction SilentlyContinue
 $PSDefaultParameterValues = @{ '*:Encoding' = 'utf8' }
 #=========Variables (Change these)=========
-if (-Not (Test-Path -Path $env:LOCALAPPDATA\eqdeets)) {
-    new-item -Path $env:LOCALAPPDATA\eqdeets -itemtype directory
-    $NOTDir = 1
-}
-if (-Not (Test-Path -Path $env:LOCALAPPDATA\eqdeets\eqpath.txt)) {
-    new-item -Path $env:LOCALAPPDATA\eqdeets\eqpath.txt
-    $NotFile = 1
-}
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-if ($NotDir -eq 1 -or $NotFile -eq 1) {
-    $window = New-Object -ComObject Wscript.shell
-    $window.popup("Please select the Everquest P99 Installation Folder")
-    while ($EQDirFile -eq $null) {
+$CheckDelay = 5 #Seconds
+
+#=========Everquest installation location=========
+$EQDir = Get-Content $env:LOCALAPPDATA\EQDeets\eqpath.txt -ErrorAction 'silentlycontinue'
+$EQGameTest = Test-Path $EQDir\eqgame.exe
+if ( -Not $EQGameTest ) {
+    New-Item -ItemType Directory -Path $env:LOCALAPPDATA\EQDeets -ErrorAction 'silentlycontinue' | Out-Null
+    Add-Type -AssemblyName "System.Windows.Forms"
+    $Dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $Dialog.Description = "Select your Project 1999 Installation Folder"
+    $Dialog.rootfolder = "MyComputer"
+    $Window = New-Object -ComObject Wscript.shell
+    $Window.popup("Please select your Project 1999 Installation Folder")
+    While ( $null -eq $EQDirFile -or -Not $EQGameTest ) {
         if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $EQDirFile = $dialog.SelectedPath
-            $EQdirFile | Set-Content $env:LOCALAPPDATA\eqdeets\eqpath.txt
+            $EQDirFile | Out-File $env:LOCALAPPDATA\EQDeets\eqpath.txt -Force
+        }
+        $EQDir = Get-Content $env:LOCALAPPDATA\EQDeets\eqpath.txt
+        $EQGameTest = Test-Path $EQDir\eqgame.exe
+        if ( -Not $EQGameTest ){
+            $Window.popup( "eqgame.exe was not found in $EQDir`nPlease verify and select your Project 1999 install folder..")
         }
     }
 }
-$EQDir = get-content $env:LOCALAPPDATA\eqdeets\eqpath.txt
-$EQLogDir = "$EQDir\Logs"
-$CheckDelay = 5 #Seconds
-#$LogSplitThreshhold = 10
 
 #=========Variables (Do Not Change)=========
+$EQLogDir = "$EQDir\Logs"
 $CharInfoDir = "$EQLogDir\Character Info"
 $ActiveDir = "$CharInfoDir\Active Character"
 $ActiveTxt = "$ActiveDir\0. Active Character.txt"
 $SaveTxt = "$CharInfoDir\1. Character List.txt"
-$OFS = " - "
 $TotalLogs = "Total Deaths"
 $EventLogs = "Death", "Level"
+$OFS = " - "
 
-#=========Creating Text Files=========
+#=========Creating Global Text Files=========
 New-Item -ItemType Directory -Path $CharInfoDir -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType Directory -Path $ActiveDir -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType File -Path $ActiveTxt -ErrorAction 'silentlycontinue' | Out-Null
 New-Item -ItemType File -Path $SaveTxt -ErrorAction 'silentlycontinue' | Out-Null
-
 Foreach ($Total in $TotalLogs) {
     $TotalTest = Test-Path "$CharInfoDir\$Total.txt"
-    if ( -not $TotalTest ){0 | Out-File "$CharInfoDir\$Total.txt"}}
+    if ( -not $TotalTest ) { 0 | Out-File "$CharInfoDir\$Total.txt" }}
 
 #=========Script=========
 Clear-Host
-write-host "using $EQLogDir"
-Write-Host "====================================="
+Write-Host "=====================================`nEverquest install found.."
 Do {
     Do {
         #===Stat Variables===
@@ -79,7 +81,6 @@ Do {
         $ActiveLogN = Get-Item $ActiveLogP | select-object -ExpandProperty Name
         $Tr, ($Char[$Nam]), $Serv = "$ActiveLogN" -split '_'; ($Char[$Ser]) = ($Serv.Substring(5)).TrimEnd('.txt')
         if ( $ActiveLogP -contains "project1999") { $Char[$Ser] = "Blue" }
-        #$FirstLine =  (Get-Content $ActiveLogP | Measure-Object).Count
 
         #---Loading Saved Character---
         $NameSer = ($Char[$Nam, $Ser] -Join " - ")
