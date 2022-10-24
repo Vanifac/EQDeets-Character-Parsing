@@ -235,7 +235,6 @@ Do {
         #===Loop Parsing===
         Write-Host "Parsing.."
         Do {
-            $StartTime = Get-Date
             $LogCache = Get-Content $ActiveLogP
 
             #---/Who Parse---
@@ -516,9 +515,6 @@ Do {
                     Copy-Item "$NameDir\*. $Stat*" $ActiveDir\ -Force
                 }
             }
-
-            $EndTime = Get-Date
-            (New-Timespan -Start $StartTime -End $EndTime).TotalSeconds
 
             #---Pause---
             for ($a = 0; $a -lt $checkdelay; $a++) { 
