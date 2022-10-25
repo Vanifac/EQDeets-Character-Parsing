@@ -109,8 +109,7 @@ Do {
                     Write-Host "Waiting for a /Who message to populate character info for"$Char[0]", ensure logging is enabled in game (/log).." -ForegroundColor Red 
                     Start-Sleep -Seconds 5 
                 }
-            }
-            While ($Null -eq $NewSave)
+            }While ($Null -eq $NewSave)
 
             $Race1 = $NewSave.LastIndexOf('(') + 1; $Ace = ($NewSave.LastIndexOf(')') - $Race1); $Char[$Rac] = $NewSave.Substring($Race1, $Ace).Trim()
             $Clas = $NewSave.LastIndexOf('[') + 3; $Lass = ($NewSave.LastIndexOf(']') - $Clas); $Char[$Cla] = $NewSave.Substring($Clas, $Lass).Trim()
@@ -235,47 +234,46 @@ Do {
         #===Loop Parsing===
         Write-Host "Parsing.."
         Do {
-            $LogCache = Get-Content $ActiveLogP
-
+            $LogCache = Get-Content $ActiveLogP 
+            $starttime = Get-date
             #---/Who Parse---
             $Who = $LogCache | Select-String -Pattern $WhoCheck -SimpleMatch | Select-Object -Last 1
-            if ($null -ne $who) {
+            if ( $null -ne $who ) {
                 $Clas = $Who.Line.LastIndexOf('[') + 3; $Lass = ($Who.Line.LastIndexOf(']') - $Clas); $NChar[$Cla] = $Who.Line.Substring($Clas, $Lass).Trim()
                 if ( $Who.Line -Like "*<*>" ) {
                     $Guil = $Who.Line.LastIndexOf('<') + 1; $Uild = ($Who.Line.LastIndexOf('>') - $Guil); $NChar[$Gui] = $Who.Line.Substring($Guil, $Uild).Trim()
                 }
-                Else { $NChar[$Gui] = "Guildless" }    
+                Else { $NChar[$Gui] = "Guildless" }
             }
-            
             #---Zoning Parse---
             $Zoning = $LogCache | Select-String -Pattern 'You have entered ' -SimpleMatch | Select-Object -Last 1
-            $NChar[$Zon] = ($Zoning.Line.Substring($Zoning.Line.LastIndexOf('entered') + 8)).TrimEnd('.')
+            if ( $null -ne $Zoning ) {
+                $NChar[$Zon] = ($Zoning.Line.Substring($Zoning.Line.LastIndexOf('entered') + 8)).TrimEnd('.') 
+            }
             
             #---Misc Parsing---
             #--(De)Ding Parse--
             $Dings = $LogCache | Select-String -Pattern "You have gained a level! Welcome to level " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Lev]) }
-            if ( $null -ne $Dings) {
+            if ( $null -ne $Dings ) {
                 $Ding = $Dings | Select-Object -Last 1
                 $NChar[$Lev] = ($Ding.Line.Substring($Ding.Line.LastIndexOf(' level ') + 7, 2).TrimEnd('!'))
                 Write-Host "Ding! Welcome to level"$NChar[$Lev] -ForegroundColor Green
-                If ( ([Int]$StatLine[$Lev]) -eq 1) {
+                If ( ([Int]$StatLine[$Lev]) -eq 1 ) {
                     Foreach ( $inst in $Dings ) {
-                        Add-Content "$NameDir\LevelLog.txt" $Inst.line
+                        Add-Content "$NameDir\LevelLog.txt" $Inst.line 
                     }
                 }
                 Else { Add-Content "$NameDir\LevelLog.txt" (($Ding.line) + " - " + $NChar[$Zon]) }
                 $NStatLine[$Lev] = $Ding.LineNumber + 1
             }
-
             #--Deaths--
             $Dying = $LogCache | Select-String -Pattern "You have been slain by " -SimpleMatch | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Dea]) }
             if ( $null -ne $Dying ) {
                 [Int]$NChar[$Dea] += $Dying.count
                 $NStatLine[$Dea] = ($Dying.LineNumber | Select-Object -last 1)
-                If ( ([Int]($StatLine[$Dea])) -eq 1) {
-                    Add-Content "$NameDir\DeathLog.txt" $Dying.line
-                }
+                If ( ([Int]($StatLine[$Dea])) -eq 1) { Add-Content "$NameDir\DeathLog.txt" $Dying.line }
                 Else { Add-Content "$NameDir\DeathLog.txt" (($Dying.line) + " - " + $NChar[$Zon] + " - Lvl:" + $NChar[$Lev]) }
+
                 $Killedby = $LogCache | Select-String -Pattern "You have been slain by " -SimpleMatch | Select-Object -Last 1
                 $Killer = $Killedby.Line.Substring($Killedby.Line.LastIndexOf(' by ') + 4 ).TrimEnd('!')
                 Write-Host "You have died!"$Killer" probably really enjoyed that.. weirdo." -ForegroundColor Red
@@ -283,29 +281,25 @@ Do {
                 [Int]$TotalDeaths += [Int]$Dying.Count
                 $TotalDeaths | Out-File "$CharInfoDir\Total Deaths.txt"
             }
-
             #--Close Calls--
             #$CloseCall = $LogCache | Select-String -Pattern '(You have been knocked unconscious!)' -Context | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
             #if( $Closecall.count -gt $NChar[$Dea] ){
             #    $Shotta = $LogCache | Select-String -Pattern "You have been knocked unconscious!"  -SimpleMatch | Select-Object -Last 1
             #    Write-Host "Close call!"$Shotta" must have been reeeaaal tired of your rapping.." -ForegroundColor Red
             #    $NChar[$Dea] = [String]([Int]$NChar[$Dea] + [Int]$Dying.count)
-            #}  
-
+            #}
             #--Final Blows--
             $Kills = $LogCache | Select-String -Pattern '(You have slain .*!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Kil]) }
             if ( $null -ne $Kills ) {
                 [Int]$NChar[$Kil] += $Kills.Count
                 $NStatLine[$Kil] = ($Kills.LineNumber | Select-Object -Last 1)
             }
-
             #--Crafts--
             $Crafts = $LogCache | Select-String -Pattern '(You have fashioned the items together to create something new!)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Cra]) }
             if ( $null -ne $Crafts ) {
                 [Int]$NChar[$Cra] += $Crafts.Count
                 $NStatLine[$Cra] = ($Crafts.LineNumber | Select-Object -Last 1)
             }
- 
             #--Failed Crafts--
             $Fails = $LogCache | Select-String -Pattern '(You lacked the skills to fashion the items together)' | Where-Object { $_.LineNumber -GT ([Int]$StatLine[$Fai]) }
             if ( $null -ne $Fails ) {
@@ -315,7 +309,7 @@ Do {
 
             #---Coin---
             #--Looted Coin--
-            $LootedCoin = $LogCache | Select-String -Pattern '(You receive .* from the corpse)','(You receive .* as your split)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$LCo]) }
+            $LootedCoin = $LogCache | Select-String -Pattern '(You receive .* from the corpse)', '(You receive .* as your split)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$LCo]) }
             if ( $null -ne $LootedCoin ) {
                 ForEach ( $Corpse in $LootedCoin) {
                     if ($Corpse.Line -like "*copper*") { $NCoin[$LCo] += [Int]($Corpse.Line.Substring($Corpse.Line.IndexOf("copper") - 3, 3).Trim()) }
@@ -325,7 +319,7 @@ Do {
                     $CoinLine[$LCo] = [Int]$Corpse.LineNumber
                 }
             }
-            #---Vendored Coin---
+            #--Vendored Coin--
             $VendorCoin = $LogCache | Select-String -Pattern '(You receive .* from .* for the )' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$VCo]) }
             if ( $null -ne $VendorCoin ) {
                 ForEach ( $Sale in $VendorCoin) {
@@ -336,7 +330,7 @@ Do {
                     $CoinLine[$VCo] = [Int]$Sale.LineNumber
                 }
             }
-            #---Quest Coin---
+            #--Quest Coin--
             $QuestCoin = $LogCache | Select-String -Pattern '(You receive .* pieces.)' | Where-Object { $_.LineNumber -GT ([Int]$CoinLine[$QCo]) }
             if ( $null -ne $QuestCoin ) {
                 ForEach ( $Quest in $QuestCoin) {
@@ -347,7 +341,7 @@ Do {
                     $CoinLine[$QCo] = [Int]$Quest.LineNumber
                 }
             }
-            #---Trade Coin---
+            #--Trade Coin--
             #$TradeCoin
 
             #---Tell Parsing---
@@ -386,7 +380,7 @@ Do {
                     $ProcTime = Get-Date
                     Foreach ( $Tell in $Timer ) {
                         if ( $Tell -like "*EQD.Timer-Zone*" ) {
-                            $ReqTime = [datetime]::ParseExact( ($Tell.line.Substring(5,20)),'MMM dd HH:mm:ss yyyy', $null)
+                            $ReqTime = [datetime]::ParseExact( ($Tell.line.Substring(5, 20)), 'MMM dd HH:mm:ss yyyy', $null)
                             $Delay = New-TimeSpan -Start $ReqTime -End $ProcTime
                             $Tr, $ZST = (Select-String "$CharDataDir\ZoneSpawnTimes.csv" -Pattern $NChar[$Zon]) -Split ","
                             if ( (($ZST -Split ":").count) -eq 3 ) {
@@ -401,26 +395,24 @@ Do {
                             }
                             Write-Host "Starting"$NChar[$Zon]"spawn timer for $ZST.."
                             Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on $NewDur"
-                        } 
+                        }
                         Elseif ( $Tell -like "*EQD.Timer-[0-9\][0-9\]:[0-6\][0-9\] is*" ) {
-                            $ReqTime = [datetime]::ParseExact( ($Tell.line.Substring(5,20)),'MMM dd HH:mm:ss yyyy', $null)
+                            $ReqTime = [datetime]::ParseExact( ($Tell.line.Substring(5, 20)), 'MMM dd HH:mm:ss yyyy', $null)
                             $Delay = New-TimeSpan -Start $ReqTime -End $ProcTime
                             $Dur = New-Timespan -Minutes ($Tell.Line.Substring(($Tell.Line.LastIndexOf(':') - 2), 2)) -Seconds ($Tell.Line.Substring($Tell.Line.LastIndexOf(':') + 1, 2))
                             $NewDur = ($Dur - $Delay).ToString("mm\:ss")
-
                             Write-Host "Starting a timer for"$Dur.ToString("mm\:ss")".."
                             Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on $NewDur"
-                        } 
+                        }
                         Elseif ( $Tell -like "*EQD.Timer-[0-9\]:[0-6\][0-9\] is*" ) {
                             #Combine this into the above elseif?
-                            $ReqTime = [datetime]::ParseExact( ($Tell.line.Substring(5,20)),'MMM dd HH:mm:ss yyyy', $null)
+                            $ReqTime = [datetime]::ParseExact( ($Tell.line.Substring(5, 20)), 'MMM dd HH:mm:ss yyyy', $null)
                             $Delay = New-TimeSpan -Start $ReqTime -End $ProcTime
                             $Dur = New-Timespan -Minutes ($Tell.Line.Substring(($Tell.Line.LastIndexOf(':') - 1), 1)) -Seconds ($Tell.Line.Substring($Tell.Line.LastIndexOf(':') + 1, 2))
                             $NewDur = ($Dur - $Delay).ToString("mm\:ss")
-
                             Write-Host "Starting a timer for"$Dur.ToString("m\:ss")".."
                             Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on $NewDur"
-                        } 
+                        }
                         Elseif ( $Tell -like "*EQD.Timer is*" ) {
                             Write-Host "Opening timer app.."
                             Start-Process "$CharDataDir\HourglassPortable.exe" -ArgumentList "--always-on-top on"
@@ -447,7 +439,8 @@ Do {
                         If ( [String]$Nchar[$c] -ne $Saved ) {
                             if ($c -le 5) {
                                 Write-Host $Stats[$c]":"$NChar[$c]
-                            }Else { $Diff = [Int]$NChar[$c] - [Int]$Saved }
+                            }
+                            Else { $Diff = [Int]$NChar[$c] - [Int]$Saved }
                             if ( $Diff -ge 5 ) {
                                 Write-Host $Stats[$c]":"$NChar[$c] "(+$Diff)"
                             }
@@ -516,10 +509,13 @@ Do {
                 }
             }
 
+            $endtime = Get-Date
+            #(New-timespan -start $starttime -end $endtime).TotalSeconds
+
             #---Pause---
             for ($a = 0; $a -lt $checkdelay; $a++) { 
                 Write-Host ("." * ($a / 3))`r -NoNewline
-                Start-Sleep -Seconds 1
+                Start-Sleep -Seconds 3
             }
             Write-Host "                      "`r -NoNewline
 
